@@ -1,0 +1,20 @@
+application:
+  version: '@project.version@'
+
+server:
+  port: 8080
+
+restTimeout: 10000
+
+outUrl:
+  apilayer:
+    host: http://apilayer.net/
+    key: dd7787c1c16916bb983a838b7023293e
+  currate:
+    host: https://currate.ru/api/
+    key: 8f1042f9b119aa261524613a26269195
+
+
+
+
+
