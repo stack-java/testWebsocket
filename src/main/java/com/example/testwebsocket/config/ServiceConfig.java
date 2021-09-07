@@ -40,11 +40,7 @@ public class ServiceConfig {
     public RestTemplate getRestTemplate() {
 
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
-//Add the Jackson Message converter
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-
-// Note: here we are making this converter to process any kind of response,
-// not only application/*json, which is the default behaviour
         converter.setSupportedMediaTypes(Collections.singletonList(MediaType.ALL));
         messageConverters.add(converter);
 

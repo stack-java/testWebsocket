@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class Scheduler {
 
-    private SimpMessagingTemplate simpMessagingTemplate;
-    private CurrencyService currencyService;
+    private final SimpMessagingTemplate simpMessagingTemplate;
+    private final CurrencyService currencyService;
 
     public Scheduler(SimpMessagingTemplate simpMessagingTemplate, CurrencyService currencyService) {
         this.simpMessagingTemplate = simpMessagingTemplate;
@@ -16,7 +16,7 @@ public class Scheduler {
     }
 
     @Scheduled(fixedRate = 10000)
-    public void getCurrencyExchangeRate(){
+    public void getCurrencyExchangeRate() {
         currencyService.getAndSaveCurrencyExchangeRate();
     }
 

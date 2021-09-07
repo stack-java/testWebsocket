@@ -11,53 +11,56 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class CurrencyService {
 
-    private RestService restService;
+    private PartnerService partnerService;
     private SimpMessagingTemplate simpMessagingTemplate;
 
     public final ConcurrentHashMap<String, BigDecimal> currencyMapInMemory =
             new ConcurrentHashMap<>();
 
-    public CurrencyService(RestService restService, SimpMessagingTemplate simpMessagingTemplate) {
-        this.restService = restService;
+    public CurrencyService(PartnerService partnerService, SimpMessagingTemplate simpMessagingTemplate) {
+        this.partnerService = partnerService;
         this.simpMessagingTemplate = simpMessagingTemplate;
     }
 
     public void getAndSaveCurrencyExchangeRate() {
-        Map<String, BigDecimal> currencyExchangeInMap =
-                restService.getCurrencyExchangeFromPartner();
+        Map<String, BigDecimal> gotByPartnerCurrencyExchangeMap =
+                partnerService.getCurrencyExchangeFromPartner();
 
-        if (currencyExchangeInMap.size() != 0) {
+        if (!gotByPartnerCurrencyExchangeMap.isEmpty()) {
             Map<String, BigDecimal> onlyNewCurrencyExchangeMap = new HashMap<>();
             Map<String, BigDecimal> onlyChangedCurrencyExchangeMap = new HashMap<>();
 
-            for (Map.Entry<String, BigDecimal> entry : currencyExchangeInMap.entrySet()) {
-                BigDecimal valueOld = currencyMapInMemory.get(entry.getKey());
-                if (valueOld == null) {
-                    onlyNewCurrencyExchangeMap.put(entry.getKey(), entry.getValue());
-                    currencyMapInMemory.put(entry.getKey(), entry.getValue());
-                } else {
-                    if (!valueOld.equals(entry.getValue())) {
-                        onlyChangedCurrencyExchangeMap.put(entry.getKey(), entry.getValue());
-                        currencyMapInMemory.put(entry.getKey(), entry.getValue());
-                    }
-                }
-            }
+            onlyNewCurrencyExchangeMap = gotByPartnerCurrencyExchangeMap.entrySet().stream()
+                    .filter(entry -> currencyMapInMemory.get(entry.getKey()) == null)
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            onlyChangedCurrencyExchangeMap = gotByPartnerCurrencyExchangeMap.entrySet().stream()
+                    .filter(entry -> currencyMapInMemory.get(entry.getKey()) != null
+                            && !currencyMapInMemory.get(entry.getKey()).equals(entry.getValue()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
             CurrencyExchangeRateOutMes currencyExchangeRateOutMes = new CurrencyExchangeRateOutMes();
             currencyExchangeRateOutMes.setMessages(new ArrayList<>());
 
-            if (onlyNewCurrencyExchangeMap.size() > 0){
+            if (!onlyNewCurrencyExchangeMap.isEmpty()) {
+
+                currencyMapInMemory.putAll(onlyNewCurrencyExchangeMap);
+
                 CurrencyExchangeRateOut currencyExchangeRateOut = new CurrencyExchangeRateOut();
                 currencyExchangeRateOut.setCurrencyExchangeRates(onlyNewCurrencyExchangeMap);
                 currencyExchangeRateOut.setType(TypeMesOut.NEW);
 
                 currencyExchangeRateOutMes.getMessages().add(currencyExchangeRateOut);
             }
-            if (onlyChangedCurrencyExchangeMap.size() > 0){
+            if (!onlyChangedCurrencyExchangeMap.isEmpty()) {
+
+                currencyMapInMemory.putAll(onlyChangedCurrencyExchangeMap);
+
                 CurrencyExchangeRateOut currencyExchangeRateOut = new CurrencyExchangeRateOut();
                 currencyExchangeRateOut.setCurrencyExchangeRates(onlyChangedCurrencyExchangeMap);
                 currencyExchangeRateOut.setType(TypeMesOut.CHANGE);
@@ -65,8 +68,7 @@ public class CurrencyService {
                 currencyExchangeRateOutMes.getMessages().add(currencyExchangeRateOut);
             }
 
-            if(currencyExchangeRateOutMes.getMessages().size() > 0){
-
+            if (!currencyExchangeRateOutMes.getMessages().isEmpty()) {
                 simpMessagingTemplate.convertAndSend("/topic/public", currencyExchangeRateOutMes);
             }
 
